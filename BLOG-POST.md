@@ -376,7 +376,7 @@ The complete source code includes:
 - **Kubernetes manifests** and deployment scripts
 - **Comprehensive documentation**
 
-Available at: [GitHub repo link]
+Available at: [github.com/dvvincent/vergeos-mcp-server](https://github.com/dvvincent/vergeos-mcp-server)
 
 ---
 

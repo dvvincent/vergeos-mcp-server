@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "vergeos": {
+      "command": "node",
+      "args": ["~/.mcp/vergeos/index.js"],
+      "env": {
+        "VERGEOS_MCP_URL": "https://your-mcp-server.example.com"
+      }
+    }
+  }
+}

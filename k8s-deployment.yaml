@@ -1,0 +1,144 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vergeos-mcp
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vergeos-credentials
+  namespace: vergeos-mcp
+type: Opaque
+stringData:
+  VERGEOS_HOST: "your-vergeos-host"
+  VERGEOS_USER: "admin"
+  VERGEOS_PASS: "REPLACE_WITH_YOUR_PASSWORD"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vergeos-mcp-server
+  namespace: vergeos-mcp
+data:
+  http-server.js: |
+    // This will be mounted from the actual source file
+    // See deploy.sh for how this is created
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vergeos-mcp
+  namespace: vergeos-mcp
+  labels:
+    app: vergeos-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vergeos-mcp
+  template:
+    metadata:
+      labels:
+        app: vergeos-mcp
+    spec:
+      containers:
+      - name: vergeos-mcp
+        image: node:20-alpine
+        ports:
+        - containerPort: 3002
+          name: http
+        env:
+        - name: PORT
+          value: "3002"
+        - name: VERGEOS_HOST
+          valueFrom:
+            secretKeyRef:
+              name: vergeos-credentials
+              key: VERGEOS_HOST
+        - name: VERGEOS_USER
+          valueFrom:
+            secretKeyRef:
+              name: vergeos-credentials
+              key: VERGEOS_USER
+        - name: VERGEOS_PASS
+          valueFrom:
+            secretKeyRef:
+              name: vergeos-credentials
+              key: VERGEOS_PASS
+        command:
+        - sh
+        - -c
+        - |
+          cd /app
+          npm install
+          node src/http-server.js
+        workingDir: /app
+        volumeMounts:
+        - name: app-source
+          mountPath: /app/src
+        - name: package-json
+          mountPath: /app/package.json
+          subPath: package.json
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: app-source
+        configMap:
+          name: vergeos-mcp-source
+      - name: package-json
+        configMap:
+          name: vergeos-mcp-package
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vergeos-mcp
+  namespace: vergeos-mcp
+spec:
+  selector:
+    app: vergeos-mcp
+  ports:
+  - port: 3002
+    targetPort: 3002
+    name: http
+  type: ClusterIP
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vergeos-mcp
+  namespace: vergeos-mcp
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`vergeos-mcp.example.com`)  # Change to your domain
+      kind: Rule
+      services:
+        - name: vergeos-mcp
+          port: 3002
+  tls:
+    secretName: your-tls-secret  # Change to your TLS secret name

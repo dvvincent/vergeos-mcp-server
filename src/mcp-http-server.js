@@ -423,7 +423,27 @@ class VergeOSAPI {
   }
 
   // Network Operations
-  async listNetworks() { return this.request("/api/v4/vnets?fields=most"); }
+  async listNetworks(options = {}) {
+    const { type, name, enabled, limit = 100, offset = 0 } = options;
+    const networks = await this.request("/api/v4/vnets?fields=most");
+    
+    // Filter
+    let filtered = networks;
+    if (type) filtered = filtered.filter(n => n.type === type);
+    if (name) filtered = filtered.filter(n => n.name?.toLowerCase().includes(name.toLowerCase()));
+    if (enabled !== undefined) filtered = filtered.filter(n => n.enabled === enabled);
+    
+    // Paginate and return summary view
+    return filtered.slice(offset, offset + limit).map(n => ({
+      id: n.$key,
+      name: n.name,
+      type: n.type,
+      network: n.network,
+      enabled: n.enabled,
+      running: n.running,
+      description: n.description || null,
+    }));
+  }
   async getNetwork(id) { return this.request(`/api/v4/vnets/${id}?fields=most`); }
   async networkAction(id, action) {
     return this.request("/api/v4/vnet_actions", {
@@ -492,7 +512,7 @@ const TOOLS = [
   { name: "resize_drive", description: "Resize a VM disk drive (increase only). Get drive IDs from get_vm_drives first.", inputSchema: { type: "object", properties: { drive_id: { type: "number", description: "Drive ID (from get_vm_drives)" }, new_size_gb: { type: "number", description: "New size in GB (must be larger than current size)" } }, required: ["drive_id", "new_size_gb"] } },
   { name: "add_drive", description: "Add a new disk drive to a VM. Use machine ID (from VM's 'machine' field), not VM ID.", inputSchema: { type: "object", properties: { machine_id: { type: "number", description: "Machine ID (from VM's 'machine' field)" }, name: { type: "string", description: "Drive name (e.g., 'data-disk')" }, size_gb: { type: "number", description: "Size in GB" }, interface_type: { type: "string", enum: ["virtio-scsi", "virtio", "ide", "ahci"], description: "Interface type (default: virtio-scsi)" }, description: { type: "string", description: "Optional description" } }, required: ["machine_id", "name", "size_gb"] } },
   { name: "modify_vm", description: "Modify VM CPU cores and/or RAM. If VM is running, set shutdown_if_running=true to auto-shutdown, apply changes, then you can restart.", inputSchema: { type: "object", properties: { id: { type: "number", description: "VM ID" }, cpu_cores: { type: "number", description: "New number of CPU cores" }, ram_mb: { type: "number", description: "New RAM in MB (e.g., 4096 for 4GB)" }, shutdown_if_running: { type: "boolean", description: "If true and VM is running, shut it down first to apply changes" }, wait_timeout: { type: "number", description: "Seconds to wait for shutdown (default: 60)" }, force_after_timeout: { type: "boolean", description: "Force shutdown if graceful fails (default: true)" } }, required: ["id"] } },
-  { name: "list_networks", description: "List all virtual networks", inputSchema: { type: "object", properties: {} } },
+  { name: "list_networks", description: "List virtual networks (summary view). Use get_network for full details.", inputSchema: { type: "object", properties: { type: { type: "string", description: "Filter by network type (e.g., 'internal', 'external', 'core', 'dmz')" }, name: { type: "string", description: "Filter by name (partial match)" }, enabled: { type: "boolean", description: "Filter by enabled status" }, limit: { type: "number", description: "Max results (default 100)" }, offset: { type: "number", description: "Skip first N results (for pagination)" } } } },
   { name: "get_network", description: "Get network details", inputSchema: { type: "object", properties: { id: { type: "number", description: "Network ID" } }, required: ["id"] } },
   { name: "network_action", description: "Perform network action (poweron, poweroff, reset, apply)", inputSchema: { type: "object", properties: { id: { type: "number" }, action: { type: "string", enum: ["poweron", "poweroff", "reset", "apply"] } }, required: ["id", "action"] } },
   { name: "list_tenants", description: "List all tenants", inputSchema: { type: "object", properties: {} } },
@@ -522,7 +542,7 @@ async function executeTool(name, args) {
     case "resize_drive": return api.resizeDrive(args.drive_id, args.new_size_gb);
     case "add_drive": return api.addDrive(args.machine_id, { name: args.name, size_gb: args.size_gb, interface_type: args.interface_type, description: args.description });
     case "modify_vm": return api.modifyVM(args.id, { cpu_cores: args.cpu_cores, ram_mb: args.ram_mb, shutdown_if_running: args.shutdown_if_running, wait_timeout: args.wait_timeout, force_after_timeout: args.force_after_timeout });
-    case "list_networks": return api.listNetworks();
+    case "list_networks": return api.listNetworks({ type: args.type, name: args.name, enabled: args.enabled, limit: args.limit, offset: args.offset });
     case "get_network": return api.getNetwork(args.id);
     case "network_action": return api.networkAction(args.id, args.action);
     case "list_tenants": return api.listTenants();

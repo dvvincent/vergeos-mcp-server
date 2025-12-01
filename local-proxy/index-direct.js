@@ -140,7 +140,7 @@ async function vmAction(id, action) {
 }
 
 async function powerOnVM(id) { return vmAction(id, "poweron"); }
-async function forceOffVM(id) { return vmAction(id, "poweroff"); }
+async function forceOffVM(id) { return vmAction(id, "kill"); }
 async function resetVM(id) { return vmAction(id, "reset"); }
 
 async function powerOffVM(id, options = {}) {

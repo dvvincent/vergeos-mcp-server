@@ -322,6 +322,10 @@ I've included both options in the project for flexibility.
 
 Want to try it yourself? Here's the 5-minute setup:
 
+### Option 1: Direct Connection (Recommended)
+
+Connect directly to your VergeOS server—no intermediate server needed:
+
 ```bash
 # 1. Create the directory
 mkdir -p ~/.mcp/vergeos && cd ~/.mcp/vergeos
@@ -340,8 +344,8 @@ cat > package.json << 'EOF'
 EOF
 npm install
 
-# 3. Download the MCP server
-curl -o index.js https://raw.githubusercontent.com/YOUR_REPO/vergeos-mcp-server/main/local-proxy/index.js
+# 3. Download the direct-connection MCP server
+curl -o index.js https://raw.githubusercontent.com/dvvincent/vergeos-mcp-server/main/local-proxy/index-direct.js
 
 # 4. Add to Windsurf config (~/.codeium/windsurf/mcp_config.json)
 ```
@@ -362,6 +366,31 @@ curl -o index.js https://raw.githubusercontent.com/YOUR_REPO/vergeos-mcp-server/
 }
 ```
 
+This connects directly to your VergeOS API with automatic token management and self-signed certificate handling.
+
+### Option 2: Via HTTP Proxy Server
+
+If you want to run a centralized MCP server (e.g., in Kubernetes) that multiple clients can connect to:
+
+```bash
+# Download the proxy client
+curl -o index.js https://raw.githubusercontent.com/dvvincent/vergeos-mcp-server/main/local-proxy/index.js
+```
+
+```json
+{
+  "mcpServers": {
+    "vergeos": {
+      "command": "node",
+      "args": ["~/.mcp/vergeos/index.js"],
+      "env": {
+        "VERGEOS_MCP_URL": "https://your-mcp-server.example.com"
+      }
+    }
+  }
+}
+```
+
 Restart Windsurf and start chatting with your infrastructure!
 
 ## The Full Project
@@ -371,8 +400,9 @@ The complete source code includes:
 - **Smart power control** with wait timeouts and auto-force
 - **VM modification** (CPU, RAM, disks) with running VM handling
 - **Log retrieval** with level and object type filtering
-- **HTTP server** for Kubernetes deployment
-- **Local proxy** for remote access scenarios
+- **Direct connection mode** - connect straight to VergeOS with auto token management
+- **HTTP proxy mode** - centralized server for multi-client deployments
+- **Self-signed cert handling** - works with homelab SSL certificates
 - **Kubernetes manifests** and deployment scripts
 - **Comprehensive documentation**
 

@@ -1,15 +1,23 @@
 #!/usr/bin/env node
 
+// Disable TLS certificate validation for self-signed certs
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+import https from "https";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 const SERVER_URL = process.env.VERGEOS_MCP_URL || "https://your-mcp-server.example.com";
 
+// HTTPS agent that ignores self-signed certificates
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+
 async function apiCall(path, options = {}) {
   const fetch = (await import("node-fetch")).default;
   const response = await fetch(`${SERVER_URL}${path}`, {
     ...options,
+    agent: SERVER_URL.startsWith('https') ? httpsAgent : undefined,
     headers: { "Content-Type": "application/json", ...options.headers },
   });
   if (!response.ok) throw new Error(`API Error: ${response.status}`);

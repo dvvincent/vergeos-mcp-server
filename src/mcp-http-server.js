@@ -269,7 +269,16 @@ class VergeOSAPI {
   }
   async getVMNics(machineId) {
     const nics = await this.request(`/api/v4/machine_nics?machine=${machineId}&fields=most`);
-    return nics.filter((nic) => nic.machine === machineId);
+    return nics.filter((nic) => nic.machine === machineId).map(n => ({
+      id: n.$key,
+      name: n.name,
+      mac: n.mac,
+      network_id: n.vnet,
+      network_name: n.vnet_name,
+      ip: n.ip_address,
+      interface: n.interface,
+      enabled: n.enabled,
+    }));
   }
   async getVMDrives(machineId) {
     const drives = await this.request(`/api/v4/machine_drives?machine=${machineId}&fields=all`);

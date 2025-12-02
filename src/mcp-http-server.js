@@ -504,6 +504,74 @@ class VergeOSAPI {
     }));
   }
   async getAlarms() { return this.request("/api/v4/alarms?fields=most"); }
+
+  // Snapshot methods
+  async listVMSnapshots(vmId) {
+    const vm = await this.getVM(vmId);
+    const machineId = vm.machine;
+    const snapshots = await this.request(`/api/v4/machine_snapshots?machine=${machineId}&fields=most`);
+    return snapshots.filter(s => s.machine === machineId).map(s => ({
+      id: s.$key,
+      name: s.name,
+      description: s.description || "",
+      created: s.dbtime,
+      expires: s.expires_type === "never" ? "never" : s.expires,
+      quiesced: s.quiesced || false,
+      size_bytes: s.size,
+    }));
+  }
+
+  async createVMSnapshot(vmId, options = {}) {
+    const { name, description = "", expires_days = 7, quiesce = false } = options;
+    const vm = await this.getVM(vmId);
+    const machineId = vm.machine;
+    
+    if (!name) throw new Error("Snapshot name is required");
+    
+    const expiresTimestamp = expires_days > 0 
+      ? Math.floor(Date.now() / 1000) + (expires_days * 86400)
+      : null;
+    
+    const body = {
+      machine: machineId,
+      name: name,
+      description: description,
+      expires_type: expires_days > 0 ? "date" : "never",
+      quiesce: quiesce,
+      created_manually: true,
+    };
+    
+    if (expiresTimestamp) body.expires = expiresTimestamp;
+    
+    const result = await this.request("/api/v4/machine_snapshots", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    
+    return {
+      success: true,
+      snapshot_id: result.$key,
+      message: `Snapshot '${name}' created for VM '${vm.name}'`,
+      vm_id: vmId,
+      vm_name: vm.name,
+      quiesce: quiesce,
+      expires: expires_days > 0 ? `${expires_days} days` : "never",
+    };
+  }
+
+  async deleteVMSnapshot(snapshotId) {
+    await this.request(`/api/v4/machine_snapshots/${snapshotId}`, { method: "DELETE" });
+    return { success: true, message: `Snapshot ${snapshotId} deleted` };
+  }
+
+  async restoreVMSnapshot(vmId, snapshotId) {
+    const result = await this.request("/api/v4/vm_actions", {
+      method: "POST",
+      body: JSON.stringify({ vm: vmId, action: "restore", params: { snapshot: snapshotId } }),
+    });
+    return { success: true, message: `VM ${vmId} restore from snapshot ${snapshotId} initiated`, result };
+  }
+
 }
 
 // Initialize API
@@ -536,6 +604,10 @@ const TOOLS = [
   { name: "list_volumes", description: "List storage volumes", inputSchema: { type: "object", properties: {} } },
   { name: "get_logs", description: "Get system logs with optional filtering", inputSchema: { type: "object", properties: { limit: { type: "number", description: "Number of logs (default 50)" }, level: { type: "string", enum: ["audit", "message", "warning", "error", "critical", "summary", "debug"], description: "Filter by log level" }, object_type: { type: "string", enum: ["vm", "vnet", "tenant", "node", "cluster", "user", "system", "task"], description: "Filter by object type" } } } },
   { name: "get_alarms", description: "Get active alarms", inputSchema: { type: "object", properties: {} } },
+  { name: "list_vm_snapshots", description: "List snapshots for a VM", inputSchema: { type: "object", properties: { vm_id: { type: "number", description: "VM ID" } }, required: ["vm_id"] } },
+  { name: "create_vm_snapshot", description: "Create a snapshot of a VM", inputSchema: { type: "object", properties: { vm_id: { type: "number", description: "VM ID" }, name: { type: "string", description: "Snapshot name" }, description: { type: "string", description: "Optional description" }, expires_days: { type: "number", description: "Days until expiration (0 for never, default 7)" }, quiesce: { type: "boolean", description: "Quiesce VM before snapshot (requires guest agent)" } }, required: ["vm_id", "name"] } },
+  { name: "delete_vm_snapshot", description: "Delete a VM snapshot", inputSchema: { type: "object", properties: { snapshot_id: { type: "number", description: "Snapshot ID" } }, required: ["snapshot_id"] } },
+  { name: "restore_vm_snapshot", description: "Restore a VM from a snapshot", inputSchema: { type: "object", properties: { vm_id: { type: "number", description: "VM ID" }, snapshot_id: { type: "number", description: "Snapshot ID to restore" } }, required: ["vm_id", "snapshot_id"] } },
 ];
 
 // Execute tool
@@ -566,6 +638,10 @@ async function executeTool(name, args) {
     case "list_volumes": return api.listVolumes();
     case "get_logs": return api.getLogs({ limit: args?.limit || 50, level: args?.level, object_type: args?.object_type });
     case "get_alarms": return api.getAlarms();
+    case "list_vm_snapshots": return api.listVMSnapshots(args.vm_id);
+    case "create_vm_snapshot": return api.createVMSnapshot(args.vm_id, args);
+    case "delete_vm_snapshot": return api.deleteVMSnapshot(args.snapshot_id);
+    case "restore_vm_snapshot": return api.restoreVMSnapshot(args.vm_id, args.snapshot_id);
     default: throw new Error(`Unknown tool: ${name}`);
   }
 }

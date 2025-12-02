@@ -168,14 +168,13 @@ async function powerOffVM(id, options = {}) {
 }
 
 async function getVMNics(id) {
-  const nics = await apiRequest(`/api/v4/machine_nics?machine=${id}&fields=most`);
+  const nics = await apiRequest(`/api/v4/machine_nics?machine=${id}&fields=all`);
   return nics.filter(n => n.machine === id).map(n => ({
     id: n.$key,
     name: n.name,
-    mac: n.mac,
+    mac: n.macaddress,
     network_id: n.vnet,
-    network_name: n.vnet_name,
-    ip: n.ip_address,
+    ip: n.ipaddress,
     interface: n.interface,
     enabled: n.enabled,
   }));

@@ -268,14 +268,13 @@ class VergeOSAPI {
     return { success: true, message: `Reset command sent to VM '${status.name}'`, previous_state: status.power_state };
   }
   async getVMNics(machineId) {
-    const nics = await this.request(`/api/v4/machine_nics?machine=${machineId}&fields=most`);
+    const nics = await this.request(`/api/v4/machine_nics?machine=${machineId}&fields=all`);
     return nics.filter((nic) => nic.machine === machineId).map(n => ({
       id: n.$key,
       name: n.name,
-      mac: n.mac,
+      mac: n.macaddress,
       network_id: n.vnet,
-      network_name: n.vnet_name,
-      ip: n.ip_address,
+      ip: n.ipaddress,
       interface: n.interface,
       enabled: n.enabled,
     }));

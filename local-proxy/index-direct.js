@@ -167,9 +167,12 @@ async function powerOffVM(id, options = {}) {
   return { success: true, message: "Shutdown signal sent" };
 }
 
-async function getVMNics(id) {
-  const nics = await apiRequest(`/api/v4/machine_nics?machine=${id}&fields=all`);
-  return nics.filter(n => n.machine === id).map(n => ({
+async function getVMNics(vmId) {
+  // Get VM to find machine ID
+  const vm = await getVM(vmId);
+  const machineId = vm.machine;
+  const nics = await apiRequest(`/api/v4/machine_nics?machine=${machineId}&fields=all`);
+  return nics.filter(n => n.machine === machineId).map(n => ({
     id: n.$key,
     name: n.name,
     mac: n.macaddress,

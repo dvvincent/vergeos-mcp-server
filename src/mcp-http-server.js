@@ -267,7 +267,10 @@ class VergeOSAPI {
     await this.vmAction(id, "reset");
     return { success: true, message: `Reset command sent to VM '${status.name}'`, previous_state: status.power_state };
   }
-  async getVMNics(machineId) {
+  async getVMNics(vmId) {
+    // Get VM to find machine ID
+    const vm = await this.getVM(vmId);
+    const machineId = vm.machine;
     const nics = await this.request(`/api/v4/machine_nics?machine=${machineId}&fields=all`);
     return nics.filter((nic) => nic.machine === machineId).map(n => ({
       id: n.$key,

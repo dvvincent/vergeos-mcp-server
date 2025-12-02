@@ -216,7 +216,25 @@ power_off_vm({ id: 40, wait_timeout: 60, force_after_timeout: true })
 | `add_drive` | Add a new disk to a VM |
 | `resize_drive` | Expand an existing disk |
 | `get_vm_drives` | List VM disks with sizes |
-| `get_vm_nics` | List VM network interfaces |
+| `get_vm_nics` | List VM network interfaces with MAC, IP, and network info |
+
+The `get_vm_nics` tool returns detailed NIC information including network association:
+
+```javascript
+get_vm_nics({ id: 11 })  // Pass VM ID, not machine ID
+// Returns:
+// [
+//   {
+//     "id": 50,
+//     "name": "eth0",
+//     "mac": "f0:db:30:7a:48:83",
+//     "network_id": 17,
+//     "ip": "10.0.6.100",
+//     "interface": "virtio",
+//     "enabled": true
+//   }
+// ]
+```
 
 The `modify_vm` tool handles running VMs gracefully:
 
@@ -292,6 +310,7 @@ Instead of cryptic API errors, the tools return actionable hints:
 
 - **Snapshots are VMs**: VMs with `is_snapshot: true` are templates, not running machines. Always filter them out.
 - **NIC filtering is broken**: `/machine_nics?machine=<ID>` returns NICs from other machines too. Always filter by machine ID in your code.
+- **NIC field names differ**: The API uses `macaddress` (not `mac`) and `ipaddress` (not `ip_address`). The `vnet` field contains the network ID.
 - **Token in cookie**: Despite the Swagger spec mentioning headers, tokens must be sent as cookies.
 - **Power state needs `/machine_status`**: The `/vms` endpoint doesn't reliably show if a VM is running.
 

@@ -19,3 +19,6 @@ npm-debug.log*
 # Build artifacts
 dist/
 build/
+
+# Blog post (not for public repo)
+BLOG-POST.md

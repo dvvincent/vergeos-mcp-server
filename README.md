@@ -95,11 +95,21 @@ This project provides two deployment options:
 | `get_logs` | Get system logs (filter by level/object type) |
 | `get_alarms` | Get active alarms |
 
+#### Snapshot Management
+| Tool | Description |
+|------|-------------|
+| `list_vm_snapshots` | List snapshots for a VM |
+| `create_vm_snapshot` | Create a snapshot (with optional expiration and quiesce) |
+| `delete_vm_snapshot` | Delete a VM snapshot |
+| `restore_vm_snapshot` | Restore a VM from a snapshot |
+
 ### Smart Features
 
 - **Graceful shutdown with wait**: `power_off_vm` can wait for VM to shut down and auto-force if timeout expires
 - **Running VM handling**: `modify_vm` detects running VMs and can auto-shutdown to apply CPU/RAM changes
 - **Log filtering**: Filter logs by level (`error`, `warning`, `audit`) or object type (`vm`, `node`, `vnet`)
+- **Snapshot expiration**: `create_vm_snapshot` supports automatic expiration (default 7 days)
+- **Quiesced snapshots**: Option to quiesce VM before snapshot (requires guest agent)
 
 ### MCP Resources
 
@@ -389,6 +399,11 @@ Once connected, you can ask your AI assistant:
 - "Get details for VM ID 34"
 - "How many nodes are in the cluster?"
 - "Show me the last 20 log entries"
+- "Create a snapshot of VM 34 called 'before-upgrade'"
+- "List all snapshots for the web-server VM"
+- "Restore VM 34 from snapshot ID 123"
+- "Add 2GB RAM to the database VM"
+- "Add a 50GB data disk to VM 34"
 
 ---
 

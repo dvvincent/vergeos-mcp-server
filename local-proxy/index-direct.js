@@ -183,16 +183,19 @@ async function getVMNics(vmId) {
   }));
 }
 
-async function getVMDrives(id) {
-  const drives = await apiRequest(`/api/v4/machine_drives?machine=${id}&fields=most`);
-  return drives.filter(d => d.machine === id).map(d => ({
+async function getVMDrives(vmId) {
+  // Get VM to find machine ID (same pattern as getVMNics)
+  const vm = await getVM(vmId);
+  const machineId = vm.machine;
+  const drives = await apiRequest(`/api/v4/machine_drives?machine=${machineId}&fields=all`);
+  return drives.filter(d => d.machine === machineId).map(d => ({
     id: d.$key, name: d.name, size_bytes: d.disksize, size_gb: Math.round(d.disksize / 1073741824 * 10) / 10,
     interface: d.interface_type, media: d.media_type,
   }));
 }
 
 async function resizeDrive(drive_id, new_size_gb) {
-  const drive = await apiRequest(`/api/v4/machine_drives/${drive_id}`);
+  const drive = await apiRequest(`/api/v4/machine_drives/${drive_id}?fields=all`);
   const new_size_bytes = new_size_gb * 1073741824;
   if (new_size_bytes <= drive.disksize) throw new Error("New size must be larger than current size");
   
@@ -361,7 +364,7 @@ const TOOLS = [
   { name: "force_off_vm", description: "Force power off a VM (hard shutdown)", inputSchema: { type: "object", properties: { id: { type: "number", description: "VM ID" } }, required: ["id"] } },
   { name: "reset_vm", description: "Reset/reboot a VM", inputSchema: { type: "object", properties: { id: { type: "number", description: "VM ID" } }, required: ["id"] } },
   { name: "get_vm_nics", description: "Get VM network interfaces", inputSchema: { type: "object", properties: { id: { type: "number", description: "VM ID" } }, required: ["id"] } },
-  { name: "get_vm_drives", description: "Get VM disk drives", inputSchema: { type: "object", properties: { id: { type: "number", description: "Machine ID" } }, required: ["id"] } },
+  { name: "get_vm_drives", description: "Get VM disk drives", inputSchema: { type: "object", properties: { id: { type: "number", description: "VM ID" } }, required: ["id"] } },
   { name: "resize_drive", description: "Resize a VM disk (increase only)", inputSchema: { type: "object", properties: { drive_id: { type: "number" }, new_size_gb: { type: "number" } }, required: ["drive_id", "new_size_gb"] } },
   { name: "add_drive", description: "Add a new disk drive to a VM", inputSchema: { type: "object", properties: { machine_id: { type: "number" }, name: { type: "string" }, size_gb: { type: "number" }, interface_type: { type: "string", enum: ["virtio-scsi", "virtio", "ide", "ahci"] } }, required: ["machine_id", "name", "size_gb"] } },
   { name: "modify_vm", description: "Modify VM CPU/RAM. Set shutdown_if_running=true if VM is running.", inputSchema: { type: "object", properties: { id: { type: "number" }, cpu_cores: { type: "number" }, ram_mb: { type: "number" }, shutdown_if_running: { type: "boolean" } }, required: ["id"] } },

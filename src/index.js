@@ -192,7 +192,10 @@ class VergeOSAPI {
   }
 
   // Machine NICs
-  async getVMNics(machineId) {
+  async getVMNics(vmId) {
+    // Get VM to find machine ID
+    const vm = await this.getVM(vmId);
+    const machineId = vm.machine;
     const nics = await this.request(
       `/api/v4/machine_nics?machine=${machineId}&fields=most`
     );
@@ -201,8 +204,13 @@ class VergeOSAPI {
   }
 
   // Machine Drives
-  async getVMDrives(machineId) {
-    return this.request(`/api/v4/machine_drives?machine=${machineId}&fields=most`);
+  async getVMDrives(vmId) {
+    // Get VM to find machine ID (same pattern as getVMNics)
+    const vm = await this.getVM(vmId);
+    const machineId = vm.machine;
+    const drives = await this.request(`/api/v4/machine_drives?machine=${machineId}&fields=all`);
+    // Filter to only this machine's drives (API quirk)
+    return drives.filter((d) => d.machine === machineId);
   }
 
   // Logs
